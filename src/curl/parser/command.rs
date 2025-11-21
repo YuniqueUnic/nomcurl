@@ -13,7 +13,9 @@ use nom::{
 
 use crate::curl::Curl;
 
-use super::common::{is_curl, quoted_data_parse, remove_curl_cmd_header, slash_line_ending};
+use super::common::{
+    argument_value_parse, is_curl, quoted_data_parse, remove_curl_cmd_header, slash_line_ending,
+};
 use super::url::curl_url_parse;
 
 pub fn url_parse(input: &str) -> IResult<&str, Curl> {
@@ -35,7 +37,7 @@ macro_rules! parse_command {
                     multispace0,
                     alt(($(tag($tag)),+,)),
                     multispace1,
-                    quoted_data_parse,
+                    argument_value_parse,
                 )
                     .map_res(|(_, _, method, _, data)| {
                         Curl::new(method, data).ok_or_else(|| {
@@ -69,11 +71,14 @@ parse_command!(header_parse, "-H", "--header");
 parse_commands!(headers_parse, header_parse);
 parse_command!(
     data_parse,
-    "-d",
-    "--data",
-    "--data-raw",
+    "--data-urlencode",
     "--data-binary",
-    "--data-urlencode"
+    "--data-raw",
+    "--data",
+    "-d",
+    "--form-string",
+    "--form",
+    "-F"
 );
 parse_commands!(datas_parse, data_parse);
 parse_commands!(flags_parse, flag_parse);
@@ -339,6 +344,27 @@ mod tests {
     fn test_data_parse() {
         let expect = new_curl!(-d, "AJFjfdslf");
         let input = "\t \r  \n -d \"AJFjfdslf\" HHH -H \"llol:90\"";
+        generic_command_parse(data_parse, input, expect);
+    }
+
+    #[test]
+    fn test_data_parse_unquoted() {
+        let expect = new_curl!(-d, "name=value");
+        let input = "  --data name=value  -H 'Accept: */*'";
+        generic_command_parse(data_parse, input, expect);
+    }
+
+    #[test]
+    fn test_data_binary_file_parse() {
+        let expect = new_curl!(-d, "@payload.json");
+        let input = " --data-binary @payload.json  -H 'Accept: */*'";
+        generic_command_parse(data_parse, input, expect);
+    }
+
+    #[test]
+    fn test_form_parse() {
+        let expect = new_curl!(-d, "file=@image.png");
+        let input = " -F file=@image.png";
         generic_command_parse(data_parse, input, expect);
     }
 

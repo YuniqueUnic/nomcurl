@@ -10,6 +10,8 @@
 - **Nom 8 ready**: Internal parsers rely on the modern `Parser` trait instead of deprecated helpers.
 - **Modular codebase**: The crate is split into `curl::command`, `curl::parser`, `curl::url`, and `curl::request` for easier maintenance and extension.
 - **Drop-in CLI**: `cargo run -- parse "…"` lets you print the whole request or specific slices (`--part header`, `--part flag`, etc.).
+- **Programmable outputs**: Consume raw tokens via `ParsedRequest::tokens` or ask the CLI for JSON using `--json` / `--pretty`.
+- **Flexible payload parsing**: Handles `--form`, `--form-string`, `--data-binary @file`, and other unquoted values alongside the traditional quoted style.
 
 ## Installation
 
@@ -27,13 +29,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let command = "curl 'https://api.example.com' -X POST \
         -H 'Accept: application/json' -d 'name=Ann' --insecure";
 
-    let parsed: ParsedRequest = parse_curl_command(command)?;
-    assert_eq!(parsed.method.as_deref(), Some("POST"));
-    assert_eq!(parsed.flags, vec!["--insecure".to_string()]);
+let parsed: ParsedRequest = parse_curl_command(command)?;
+assert_eq!(parsed.method.as_deref(), Some("POST"));
+assert_eq!(parsed.flags, vec!["--insecure".to_string()]);
+assert_eq!(parsed.tokens.len(), 4); // URL + header + data + flag
 
-    println!("URL -> {}", parsed.url);
-    println!("Headers -> {:?}", parsed.headers);
-    Ok(())
+println!("URL -> {}", parsed.url);
+println!("Headers -> {:?}", parsed.headers);
+Ok(())
 }
 ```
 
@@ -53,6 +56,9 @@ cargo run -- parse "curl 'https://httpbin.org/get' -H 'Accept: */*'"
 
 # Extract only the headers
 cargo run -- parse "curl 'https://httpbin.org/post' -H 'A:1' -H 'B:2'" --part header
+
+# Emit JSON (pretty printed)
+cargo run -- parse "curl 'https://httpbin.org/post' --data name=value --insecure" --json --pretty
 ```
 
 The CLI mirrors the library parser, so every fix automatically benefits both surfaces.

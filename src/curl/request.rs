@@ -1,18 +1,20 @@
 use std::fmt;
 
 use nom::error::Error;
+use serde::Serialize;
 
 use crate::curl::command::CurlToken;
 use crate::curl::parser::curl_cmd_parse;
 use crate::curl::url::CurlUrl;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ParsedRequest {
     pub url: CurlUrl,
     pub method: Option<String>,
     pub headers: Vec<String>,
     pub data: Vec<String>,
     pub flags: Vec<String>,
+    pub tokens: Vec<CurlToken>,
 }
 
 impl ParsedRequest {
@@ -23,9 +25,9 @@ impl ParsedRequest {
         let mut data = Vec::new();
         let mut flags = Vec::new();
 
-        for token in tokens {
+        for token in &tokens {
             match token {
-                CurlToken::Url(parsed_url) => url = Some(parsed_url),
+                CurlToken::Url(parsed_url) => url = Some(parsed_url.clone()),
                 CurlToken::Method(field) => method = field.data().map(|value| value.to_string()),
                 CurlToken::Header(field) => {
                     if let Some(value) = field.data() {
@@ -49,6 +51,7 @@ impl ParsedRequest {
             headers,
             data,
             flags,
+            tokens,
         })
     }
 }
@@ -102,4 +105,20 @@ impl<'a> From<nom::Err<Error<&'a str>>> for ParseError {
 pub fn parse_curl_command(input: &str) -> Result<ParsedRequest, ParseError> {
     let (_, tokens) = curl_cmd_parse(input).map_err(ParseError::from)?;
     ParsedRequest::try_from_tokens(tokens).map_err(ParseError::from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::curl::command::CurlToken;
+
+    #[test]
+    fn parsed_request_exposes_tokens() {
+        let cmd = "curl 'https://example.com' -H 'A:1' --data name=value --insecure";
+        let parsed = parse_curl_command(cmd).expect("valid curl");
+        assert_eq!(parsed.tokens.len(), 4);
+        assert!(matches!(parsed.tokens[1], CurlToken::Header(_)));
+        assert!(matches!(parsed.tokens[2], CurlToken::Data(_)));
+        assert!(matches!(parsed.tokens[3], CurlToken::Flag(_)));
+    }
 }

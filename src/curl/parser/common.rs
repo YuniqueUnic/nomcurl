@@ -1,12 +1,12 @@
 use nom::character::complete::multispace0;
 use nom::{
     branch::alt,
-    bytes::complete::take_until,
+    bytes::complete::{take_till1, take_until},
     character::{self, complete::char},
     combinator::recognize,
     error::{context, Error, ErrorKind},
     multi::fold_many0,
-    sequence::delimited,
+    sequence::{delimited, preceded},
     IResult, Parser,
 };
 
@@ -60,6 +60,17 @@ pub fn single_quoted_data_parse(input: &str) -> IResult<&str, &str> {
     .parse(input)
 }
 
+pub fn unquoted_data_parse(input: &str) -> IResult<&str, &str> {
+    context(
+        "unquoted data parse",
+        preceded(
+            multispace0,
+            take_till1(|c: char| c.is_whitespace() || c == '\\'),
+        ),
+    )
+    .parse(input)
+}
+
 pub fn quoted_data_parse(input: &str) -> IResult<&str, &str> {
     let double_res = double_quoted_data_parse(input);
     let single_res = single_quoted_data_parse(input);
@@ -84,6 +95,18 @@ pub fn quoted_data_parse(input: &str) -> IResult<&str, &str> {
             Err(nom::Err::Failure(Error::new(input, ErrorKind::Fail)))
         }
     }
+}
+
+pub fn argument_value_parse(input: &str) -> IResult<&str, &str> {
+    context(
+        "argument value parse",
+        alt((
+            double_quoted_data_parse,
+            single_quoted_data_parse,
+            unquoted_data_parse,
+        )),
+    )
+    .parse(input)
 }
 
 pub fn iter_quoted_data_parse(input: &str) -> IResult<&str, Vec<String>> {

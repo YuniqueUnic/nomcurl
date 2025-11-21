@@ -1,6 +1,7 @@
+use serde::Serialize;
 use std::fmt;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum Protocol {
     Http,
     Https,
@@ -39,7 +40,7 @@ impl From<&str> for Protocol {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct UserInfo {
     pub username: String,
     pub password: Option<String>,
@@ -68,7 +69,7 @@ impl UserInfo {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize)]
 pub struct CurlUrl {
     pub protocol: Protocol,
     pub userinfo: Option<UserInfo>,

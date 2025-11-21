@@ -1,5 +1,6 @@
-use clap::{Arg, Command};
+use clap::{Arg, ArgAction, Command};
 use curl::{parse_curl_command, ParsedRequest};
+use serde_json::{json, Value};
 
 pub mod curl;
 mod test_util;
@@ -38,6 +39,19 @@ fn main() {
                         )
                         .required(false)
                         .value_parser(clap::value_parser!(CurlCommand)),
+                )
+                .arg(
+                    Arg::new("json")
+                        .long("json")
+                        .help("Outputs the parsed result as JSON")
+                        .action(ArgAction::SetTrue),
+                )
+                .arg(
+                    Arg::new("pretty")
+                        .long("pretty")
+                        .help("Pretty-print JSON output (requires --json)")
+                        .requires("json")
+                        .action(ArgAction::SetTrue),
                 ),
         )
         .get_matches();
@@ -46,12 +60,22 @@ fn main() {
         Some(("parse", sub_matches)) => {
             let command = sub_matches.get_one::<String>("command").unwrap();
             let part = sub_matches.get_one::<CurlCommand>("part").copied();
+            let output_json = sub_matches.get_flag("json");
+            let pretty = sub_matches.get_flag("pretty");
 
             match parse_curl_command(command) {
-                Ok(parsed) => match part {
-                    Some(part) => print_part(&parsed, part),
-                    None => print_request_summary(&parsed),
-                },
+                Ok(parsed) => {
+                    if output_json {
+                        if let Err(err) = print_json_output(&parsed, part, pretty) {
+                            eprintln!("Failed to serialize parsed request: {err}");
+                        }
+                    } else {
+                        match part {
+                            Some(part) => print_part(&parsed, part),
+                            None => print_request_summary(&parsed),
+                        }
+                    }
+                }
                 Err(e) => eprintln!("Error parsing curl command: {e}"),
             }
         }
@@ -132,4 +156,28 @@ fn print_request_summary(parsed: &ParsedRequest) {
             println!("  - {flag}");
         }
     }
+}
+
+fn print_json_output(
+    parsed: &ParsedRequest,
+    part: Option<CurlCommand>,
+    pretty: bool,
+) -> Result<(), serde_json::Error> {
+    let value: Value = match part {
+        Some(CurlCommand::Method) => json!(parsed.method),
+        Some(CurlCommand::Header) => json!(parsed.headers),
+        Some(CurlCommand::Data) => json!(parsed.data),
+        Some(CurlCommand::Flag) => json!(parsed.flags),
+        Some(CurlCommand::Url) => json!(parsed.url),
+        None => serde_json::to_value(parsed)?,
+    };
+
+    let json_string = if pretty {
+        serde_json::to_string_pretty(&value)?
+    } else {
+        serde_json::to_string(&value)?
+    };
+
+    println!("{}", json_string);
+    Ok(())
 }

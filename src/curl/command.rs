@@ -1,6 +1,7 @@
 use crate::curl::url::CurlUrl;
+use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CurlField {
     pub identifier: String,
     pub data: Option<String>,
@@ -30,7 +31,7 @@ impl CurlField {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum CurlToken {
     Method(CurlField),
     Url(CurlUrl),
@@ -44,12 +45,15 @@ pub use CurlToken as Curl;
 impl CurlToken {
     const METHOD_FLAGS: [&'static str; 2] = ["-X", "--request"];
     const HEADER_FLAGS: [&'static str; 2] = ["-H", "--header"];
-    const DATA_FLAGS: [&'static str; 5] = [
-        "-d",
-        "--data",
-        "--data-raw",
-        "--data-binary",
+    const DATA_FLAGS: [&'static str; 8] = [
         "--data-urlencode",
+        "--data-binary",
+        "--data-raw",
+        "--data",
+        "-d",
+        "--form-string",
+        "--form",
+        "-F",
     ];
 
     pub fn new(identifier: &str, param: &str) -> Option<Self> {

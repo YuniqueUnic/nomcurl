@@ -10,6 +10,8 @@
 - **兼容 nom 8**：内部解析器改用新的 `Parser` trait，实现零 copy 的组合式解析。
 - **模块化代码**：代码拆分为 `curl::command`、`curl::parser`、`curl::url`、`curl::request` 等子模块，方便扩展与维护。
 - **CLI 同步升级**：`cargo run -- parse "…"` 即可查看完整解析结果，或通过 `--part` 仅查看某部分。
+- **编程友好**：`ParsedRequest::tokens` 提供原始 token 列表，CLI 也支持 `--json` / `--pretty` 输出。
+- **更灵活的数据解析**：新增 `--form`/`--form-string`/`--data-binary @file` 以及未加引号 payload 的解析能力。
 
 ## 安装
 
@@ -27,11 +29,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let command = "curl 'https://api.example.com' -X POST \
         -H 'Accept: application/json' -d 'name=Ann' --insecure";
 
-    let parsed: ParsedRequest = parse_curl_command(command)?;
-    assert_eq!(parsed.method.as_deref(), Some("POST"));
-    println!("URL -> {}", parsed.url);
-    println!("Headers -> {:?}", parsed.headers);
-    Ok(())
+let parsed: ParsedRequest = parse_curl_command(command)?;
+assert_eq!(parsed.method.as_deref(), Some("POST"));
+println!("URL -> {}", parsed.url);
+println!("Headers -> {:?}", parsed.headers);
+println!("Tokens -> {}", parsed.tokens.len());
+Ok(())
 }
 ```
 
@@ -48,6 +51,7 @@ let (_, tokens): (_, Vec<Curl>) = curl_cmd_parse(command).expect("valid curl");
 ```bash
 cargo run -- parse "curl 'https://httpbin.org/get' -H 'Accept: */*'"
 cargo run -- parse "curl 'https://httpbin.org/post' -H 'A:1' -H 'B:2'" --part header
+cargo run -- parse "curl 'https://httpbin.org/post' --data name=value --insecure" --json --pretty
 ```
 
 ## 模块总览

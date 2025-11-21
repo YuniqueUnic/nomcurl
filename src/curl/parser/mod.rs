@@ -7,8 +7,9 @@ pub use command::{
     headers_parse, method_parse, methods_parse,
 };
 pub use common::{
-    double_quoted_data_parse, is_curl, iter_quoted_data_parse, quoted_data_parse,
-    remove_curl_cmd_header, single_quoted_data_parse, slash_line_ending,
+    argument_value_parse, double_quoted_data_parse, is_curl, iter_quoted_data_parse,
+    quoted_data_parse, remove_curl_cmd_header, single_quoted_data_parse, slash_line_ending,
+    unquoted_data_parse,
 };
 pub use url::{
     credentials_domain_parse, credentials_domain_to_host_parse,
