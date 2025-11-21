@@ -1,5 +1,5 @@
 use clap::{Arg, Command};
-use curl::{curl_parsers::curl_cmd_parse, Curl};
+use curl::{parse_curl_command, ParsedRequest};
 
 pub mod curl;
 mod test_util;
@@ -13,7 +13,6 @@ pub enum CurlCommand {
     Url,
 }
 
-// TODO: Build more funcs
 fn main() {
     let matches = Command::new("nomcurl")
         .version("0.1.0")
@@ -34,7 +33,9 @@ fn main() {
                         .short('p')
                         .long("part")
                         .value_name("PART")
-                        .help("Specifies which part of the curl command to parse (method, header, data, flag, url)")
+                        .help(
+                            "Specifies which part of the curl command to parse (method, header, data, flag, url)",
+                        )
                         .required(false)
                         .value_parser(clap::value_parser!(CurlCommand)),
                 ),
@@ -44,50 +45,91 @@ fn main() {
     match matches.subcommand() {
         Some(("parse", sub_matches)) => {
             let command = sub_matches.get_one::<String>("command").unwrap();
-            let part = sub_matches.get_one::<CurlCommand>("part");
+            let part = sub_matches.get_one::<CurlCommand>("part").copied();
 
-            match curl_cmd_parse(command) {
-                Ok((_remaining, curls)) => {
-                    if let Some(part) = part {
-                        match part {
-                            CurlCommand::Method => {
-                                for curl in curls.iter().filter(|c| matches!(c, Curl::Method(_))) {
-                                    println!("{:?}", curl);
-                                }
-                            }
-                            CurlCommand::Header => {
-                                for curl in curls.iter().filter(|c| matches!(c, Curl::Header(_))) {
-                                    println!("{:?}", curl);
-                                }
-                            }
-                            CurlCommand::Data => {
-                                for curl in curls.iter().filter(|c| matches!(c, Curl::Data(_))) {
-                                    println!("{:?}", curl);
-                                }
-                            }
-                            CurlCommand::Flag => {
-                                for curl in curls.iter().filter(|c| matches!(c, Curl::Flag(_))) {
-                                    println!("{:?}", curl);
-                                }
-                            }
-                            CurlCommand::Url => {
-                                for curl in curls.iter().filter(|c| matches!(c, Curl::URL(_))) {
-                                    println!("{:?}", curl);
-                                }
-                            }
-                        }
-                    } else {
-                        for curl in curls {
-                            println!("{:?}", curl);
-                        }
-                    }
-                }
-                Err(e) => eprintln!("Error parsing curl command: {:?}", e),
+            match parse_curl_command(command) {
+                Ok(parsed) => match part {
+                    Some(part) => print_part(&parsed, part),
+                    None => print_request_summary(&parsed),
+                },
+                Err(e) => eprintln!("Error parsing curl command: {e}"),
             }
         }
         _ => {
             Command::new("nomcurl").print_help().unwrap();
             println!();
+        }
+    }
+}
+
+fn print_part(parsed: &ParsedRequest, part: CurlCommand) {
+    match part {
+        CurlCommand::Method => match &parsed.method {
+            Some(method) => println!("{method}"),
+            None => println!("(method not specified)"),
+        },
+        CurlCommand::Header => {
+            if parsed.headers.is_empty() {
+                println!("(no headers)");
+            } else {
+                for header in &parsed.headers {
+                    println!("{header}");
+                }
+            }
+        }
+        CurlCommand::Data => {
+            if parsed.data.is_empty() {
+                println!("(no data payload)");
+            } else {
+                for payload in &parsed.data {
+                    println!("{payload}");
+                }
+            }
+        }
+        CurlCommand::Flag => {
+            if parsed.flags.is_empty() {
+                println!("(no flags)");
+            } else {
+                for flag in &parsed.flags {
+                    println!("{flag}");
+                }
+            }
+        }
+        CurlCommand::Url => println!("{}", parsed.url),
+    }
+}
+
+fn print_request_summary(parsed: &ParsedRequest) {
+    println!("URL: {}", parsed.url);
+    match &parsed.method {
+        Some(method) => println!("Method: {method}"),
+        None => println!("Method: (not specified)"),
+    }
+
+    if parsed.headers.is_empty() {
+        println!("Headers: (none)");
+    } else {
+        println!("Headers:");
+        for header in &parsed.headers {
+            println!("  - {header}");
+        }
+    }
+
+    if parsed.data.is_empty() {
+        println!("Data: (none)");
+    } else {
+        println!("Data:");
+        for payload in &parsed.data {
+            println!("  - {payload}");
+        }
+    }
+
+    if parsed.flags.is_empty() {
+        println!("Flags: (none)");
+    } else {
+        println!("Flags:");
+        for flag in &parsed.flags {
+            println!("  - {flag}");
         }
     }
 }

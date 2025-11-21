@@ -1,67 +1,70 @@
-# nom-curl: A cURL Command Parser in Rust
+# nomcurl：基于 Nom 的 cURL 命令解析器
 
-[中文](./readme-cn.md) | [English](./readme.md) 
+[中文](./readme-cn.md) | [English](./readme.md)
 
-`nom-curl` 是一个用 Rust 编写的库，它使用 `nom` 库来解析 cURL 命令。它可以处理各种 cURL 选项，包括方法、头部、数据和标志。
+`nomcurl` 是一个用于解析 `curl …` 命令的 Rust 库与 CLI。项目已经迁移到 `nom` 8，提供结构化的 `ParsedRequest` API，并对代码结构、性能与 CLI 体验进行了全面重构。
 
-## Features
+## 亮点
 
-- 解析 cURL 命令行选项。
-- 支持常见的 cURL 方法，如 `-X`, `-H`, `-d` 等。
-- 能够处理带引号的数据和 URL。
-- 提供灵活的 API 来扩展新的 cURL 选项。
+- **结构化输出**：`parse_curl_command` 返回 `ParsedRequest`，包含 URL、Method、Headers、Data 与 Flags。
+- **兼容 nom 8**：内部解析器改用新的 `Parser` trait，实现零 copy 的组合式解析。
+- **模块化代码**：代码拆分为 `curl::command`、`curl::parser`、`curl::url`、`curl::request` 等子模块，方便扩展与维护。
+- **CLI 同步升级**：`cargo run -- parse "…"` 即可查看完整解析结果，或通过 `--part` 仅查看某部分。
 
-## Installation
-
-将 `nom-curl` 添加到您的 `Cargo.toml` 文件中：
+## 安装
 
 ```toml
 [dependencies]
-nom-curl = "0.1.8"
+nomcurl = "0.2.0"
 ```
 
-## Usage
+## 库使用示例
 
 ```rust
-use nom_curl::parsers::curl_cmd_parse;
+use nomcurl::{parse_curl_command, ParsedRequest};
 
-fn main() {
-    let curl_command = "curl 'http://example.com' -X GET -H 'Accept: application/json'";
-    let result = curl_cmd_parse(curl_command);
-    println!("{:?}", result);
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let command = "curl 'https://api.example.com' -X POST \
+        -H 'Accept: application/json' -d 'name=Ann' --insecure";
+
+    let parsed: ParsedRequest = parse_curl_command(command)?;
+    assert_eq!(parsed.method.as_deref(), Some("POST"));
+    println!("URL -> {}", parsed.url);
+    println!("Headers -> {:?}", parsed.headers);
+    Ok(())
 }
 ```
 
-## Documentation
-
-详细的 API 文档和指南可以在 [这里](https://docs.rs/nom-curl) 找到。
-
-## Examples
-
-### 解析简单的 cURL 命令
+若需要访问底层 token，可直接使用 `curl_cmd_parse` 与 `Curl`：
 
 ```rust
-use nom_curl::parsers::curl_cmd_parse;
+use nomcurl::{curl_cmd_parse, Curl};
 
-let curl_command = "curl 'http://example.com' -X GET";
-let result = curl_cmd_parse(curl_command);
-assert!(result.is_ok());
+let (_, tokens): (_, Vec<Curl>) = curl_cmd_parse(command).expect("valid curl");
 ```
 
-### 解析带数据的 cURL 命令
+## CLI
 
-```rust
-use nom_curl::parsers::curl_cmd_parse;
-
-let curl_command = "curl 'http://example.com' -d 'name=John&age=30'";
-let result = curl_cmd_parse(curl_command);
-assert!(result.is_ok());
+```bash
+cargo run -- parse "curl 'https://httpbin.org/get' -H 'Accept: */*'"
+cargo run -- parse "curl 'https://httpbin.org/post' -H 'A:1' -H 'B:2'" --part header
 ```
 
-## Contributing
+## 模块总览
 
-我们欢迎任何贡献！请在提交 pull request 前查看 [贡献指南](https://github.com/yourusername/nom-curl/blob/master/CONTRIBUTING.md)。
+- `curl::command`：`CurlField`、`CurlToken` 以及测试宏。
+- `curl::parser`：公共工具、命令解析、URL 解析等子模块。
+- `curl::url`：`CurlUrl`、`Protocol`、`UserInfo` 等不可变结构体。
+- `curl::request`：`ParsedRequest`、`parse_curl_command` 以及错误类型。
+
+## 测试
+
+```bash
+cargo test
+```
+
+全部单元测试会同时覆盖库与 CLI。
 
 ## License
 
-`nom-curl` 是在 MIT 许可证下发布的。
+MIT
