@@ -12,6 +12,7 @@
 - **Drop-in CLI**: `cargo run -- parse "…"` lets you print the whole request or specific slices (`--part header`, `--part flag`, etc.).
 - **Programmable outputs**: Consume raw tokens via `ParsedRequest::tokens` or ask the CLI for JSON using `--json` / `--pretty`.
 - **Flexible payload parsing**: Handles `--form`, `--form-string`, `--data-binary @file`, and other unquoted values alongside the traditional quoted style.
+- **Richer flag support**: Long options like `--compressed`, `--retry 3`, `--cookie-jar` are parsed consistently, ensuring they appear in `ParsedRequest::flags`.
 
 ## Installation
 
@@ -57,8 +58,9 @@ cargo run -- parse "curl 'https://httpbin.org/get' -H 'Accept: */*'"
 # Extract only the headers
 cargo run -- parse "curl 'https://httpbin.org/post' -H 'A:1' -H 'B:2'" --part header
 
-# Emit JSON (pretty printed)
-cargo run -- parse "curl 'https://httpbin.org/post' --data name=value --insecure" --json --pretty
+# Emit JSON (pretty printed) and limit to select keys
+cargo run -- parse "curl 'https://httpbin.org/post' --data name=value --insecure" \
+  --json --pretty --json-key url --json-key data
 ```
 
 The CLI mirrors the library parser, so every fix automatically benefits both surfaces.

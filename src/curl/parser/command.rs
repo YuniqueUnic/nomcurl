@@ -84,29 +84,38 @@ parse_commands!(datas_parse, data_parse);
 parse_commands!(flags_parse, flag_parse);
 
 pub fn flag_parse(input: &str) -> IResult<&str, Curl> {
-    context(
-        "flag parse",
-        (
-            opt(slash_line_ending),
-            multispace0,
-            recognize((
-                character::complete::char('-'),
-                opt(character::complete::char('-')),
-                take_while1(|c: char| c.is_alphanumeric() || matches!(c, '-' | '_')),
-            )),
-        )
-            .map_res(|(_, _, flag)| {
-                if Curl::expects_value(flag) {
-                    return Err(nom::Err::Failure::<Error<&str>>(Error::new(
-                        flag,
-                        ErrorKind::Fail,
-                    )));
+    context("flag parse", |input| {
+        let (input, _) = opt(slash_line_ending).parse(input)?;
+        let (input, _) = multispace0(input)?;
+        let (mut input, flag) = recognize((
+            character::complete::char('-'),
+            opt(character::complete::char('-')),
+            take_while1(|c: char| c.is_alphanumeric() || matches!(c, '-' | '_')),
+        ))
+        .parse(input)?;
+
+        if Curl::expects_value(flag) {
+            return Err(nom::Err::Error(Error::new(flag, ErrorKind::Fail)));
+        }
+
+        let mut value: Option<&str> = None;
+        if Curl::flag_requires_value(flag) {
+            let (after_space, _) = multispace1(input)?;
+            if let Some(next_char) = after_space.chars().next() {
+                if next_char == '-' {
+                    return Err(nom::Err::Error(Error::new(after_space, ErrorKind::Fail)));
                 }
-                Curl::new_flag(flag).ok_or_else(|| {
-                    nom::Err::Failure::<Error<&str>>(Error::new(flag, ErrorKind::Fail))
-                })
-            }),
-    )
+            }
+            let (after_value, parsed_value) = argument_value_parse(after_space)?;
+            value = Some(parsed_value);
+            input = after_value;
+        }
+
+        let curl = Curl::new_flag_with_value(flag, value)
+            .ok_or_else(|| nom::Err::Error(Error::new(flag, ErrorKind::Fail)))?;
+
+        Ok((input, curl))
+    })
     .parse(input)
 }
 
@@ -424,5 +433,22 @@ mod tests {
         let expect = vec![new_curl!("--help"), new_curl!("-a")];
         let input = "\t \r --help -a  \n -X \"AJFjfdslf\" HHH -H \"llol:90\"";
         generic_command_parse(flags_parse, input, expect);
+    }
+
+    #[test]
+    fn test_flag_with_value_parse() {
+        let input = " --retry 3 --compressed";
+        let (rest, parsed) = flag_parse(input).expect("flag with value");
+        assert_eq!(
+            parsed,
+            Curl::new_flag_with_value("--retry", Some("3")).unwrap()
+        );
+        assert!(rest.trim_start().starts_with("--compressed"));
+    }
+
+    #[test]
+    fn test_flag_missing_required_value() {
+        let input = " --retry   --compressed";
+        assert!(flag_parse(input).is_err());
     }
 }

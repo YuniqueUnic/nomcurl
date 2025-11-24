@@ -55,6 +55,15 @@ impl CurlToken {
         "--form",
         "-F",
     ];
+    const FLAG_VALUE_REQUIRED: [&'static str; 7] = [
+        "--retry",
+        "--retry-delay",
+        "--retry-max-time",
+        "--connect-timeout",
+        "--max-time",
+        "--cookie",
+        "--cookie-jar",
+    ];
 
     pub fn new(identifier: &str, param: &str) -> Option<Self> {
         if param.trim().is_empty() {
@@ -83,11 +92,21 @@ impl CurlToken {
     }
 
     pub fn new_flag(identifier: &str) -> Option<Self> {
+        Self::new_flag_with_value(identifier, None)
+    }
+
+    pub fn new_flag_with_value(identifier: &str, value: Option<&str>) -> Option<Self> {
         let trimmed = identifier.trim();
         if trimmed.is_empty() {
             return None;
         }
-        Some(CurlToken::Flag(CurlField::new(trimmed)))
+        let mut field = CurlField::new(trimmed);
+        if let Some(value) = value {
+            if !value.trim().is_empty() {
+                field.data = Some(value.trim().into());
+            }
+        }
+        Some(CurlToken::Flag(field))
     }
 
     pub fn new_url(url: CurlUrl) -> Self {
@@ -118,6 +137,11 @@ impl CurlToken {
         Self::METHOD_FLAGS.contains(&normalized)
             || Self::HEADER_FLAGS.contains(&normalized)
             || Self::DATA_FLAGS.contains(&normalized)
+    }
+
+    pub fn flag_requires_value(identifier: &str) -> bool {
+        let normalized = identifier.trim();
+        Self::FLAG_VALUE_REQUIRED.contains(&normalized)
     }
 }
 

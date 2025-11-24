@@ -12,6 +12,7 @@
 - **CLI 同步升级**：`cargo run -- parse "…"` 即可查看完整解析结果，或通过 `--part` 仅查看某部分。
 - **编程友好**：`ParsedRequest::tokens` 提供原始 token 列表，CLI 也支持 `--json` / `--pretty` 输出。
 - **更灵活的数据解析**：新增 `--form`/`--form-string`/`--data-binary @file` 以及未加引号 payload 的解析能力。
+- **更多 flag 支持**：`--compressed`、`--retry 3`、`--cookie-jar` 等长选项都会被解析并暴露在 `ParsedRequest::flags` 中。
 
 ## 安装
 
@@ -51,7 +52,8 @@ let (_, tokens): (_, Vec<Curl>) = curl_cmd_parse(command).expect("valid curl");
 ```bash
 cargo run -- parse "curl 'https://httpbin.org/get' -H 'Accept: */*'"
 cargo run -- parse "curl 'https://httpbin.org/post' -H 'A:1' -H 'B:2'" --part header
-cargo run -- parse "curl 'https://httpbin.org/post' --data name=value --insecure" --json --pretty
+cargo run -- parse "curl 'https://httpbin.org/post' --data name=value --insecure" \
+  --json --pretty --json-key url --json-key data
 ```
 
 ## 模块总览
