@@ -101,11 +101,7 @@ pub fn queries_parse(input: &str) -> IResult<&str, &str> {
 }
 
 pub fn queries_to_query_fragments(input: &str) -> Vec<(String, String)> {
-    let queries = if input.starts_with('?') {
-        &input[1..]
-    } else {
-        input
-    };
+    let queries = input.strip_prefix('?').unwrap_or(input);
 
     queries
         .split('&')

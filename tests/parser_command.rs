@@ -98,7 +98,7 @@ fn test_url_parse() {
     let (_, expect_url) = nomcurl::curl::parser::curl_url_parse(full_url_str).expect("url");
     let expect = Curl::new_url(expect_url);
     let input = format!(" curl \r \t   '{}' \\ \r\n-H 'Accept: */*'", full_url_str);
-    let input = remove_curl_cmd_header(&input.trim_start());
+    let input = remove_curl_cmd_header(input.trim_start());
     generic_command_parse(url_parse, input, expect);
 }
 

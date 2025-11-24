@@ -15,8 +15,7 @@ include = [
     "readme-cn.md",
     ".gitignore",
     "Cargo.toml",
-    "src/*.rs",
-    "src/*/*.rs",
+    "src/**",
 ]
 
 [dependencies]
