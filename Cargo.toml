@@ -5,7 +5,7 @@ authors = ["Unic"]
 repository = "https://github.com/YuniqueUnic/nomcurl"
 readme = "./readme.md"
 keywords = ["parser", "nom", "curl", "cmd"]
-version = "0.1.8"
+version = "0.2.0"
 license = "MIT"
 edition = "2021"
 
