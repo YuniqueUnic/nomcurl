@@ -1,32 +1,12 @@
 use clap::{Arg, ArgAction, Command};
-use curl::{parse_curl_command, ParsedRequest};
-use serde_json::{json, Value};
-
-pub mod curl;
-mod test_util;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
-pub enum CurlCommand {
-    Method,
-    Header,
-    Data,
-    Flag,
-    Url,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
-pub enum JsonField {
-    Url,
-    Method,
-    Headers,
-    Data,
-    Flags,
-    Tokens,
-}
+use nomcurl::{
+    cli_support::{build_json_value, error_payload, format_json, CurlCommand, JsonField},
+    parse_curl_command, ParsedRequest,
+};
 
 fn main() {
     let matches = Command::new("nomcurl")
-        .version("0.1.0")
+        .version("0.2.0")
         .about("A CLI tool to parse and manipulate curl commands")
         .subcommand_required(true)
         .arg_required_else_help(true)
@@ -89,8 +69,18 @@ fn main() {
             match parse_curl_command(command) {
                 Ok(parsed) => {
                     if output_json {
-                        if let Err(err) = print_json_output(&parsed, part, pretty, &json_keys) {
-                            print_json_error("serialization_error", &err.to_string(), pretty);
+                        match build_json_value(&parsed, part, &json_keys) {
+                            Ok(value) => match format_json(&value, pretty) {
+                                Ok(text) => println!("{}", text),
+                                Err(err) => print_json_error(
+                                    "serialization_error",
+                                    &err.to_string(),
+                                    pretty,
+                                ),
+                            },
+                            Err(err) => {
+                                print_json_error("serialization_error", &err.to_string(), pretty)
+                            }
                         }
                     } else {
                         match part {
@@ -186,106 +176,10 @@ fn print_request_summary(parsed: &ParsedRequest) {
         }
     }
 }
-
-fn print_json_output(
-    parsed: &ParsedRequest,
-    part: Option<CurlCommand>,
-    pretty: bool,
-    keys: &[JsonField],
-) -> Result<(), serde_json::Error> {
-    let value = build_json_value(parsed, part, keys)?;
-    let json_string = if pretty {
-        serde_json::to_string_pretty(&value)?
-    } else {
-        serde_json::to_string(&value)?
-    };
-
-    println!("{}", json_string);
-    Ok(())
-}
-
-fn build_json_value(
-    parsed: &ParsedRequest,
-    part: Option<CurlCommand>,
-    keys: &[JsonField],
-) -> Result<Value, serde_json::Error> {
-    if let Some(part) = part {
-        let value = match part {
-            CurlCommand::Method => json!(parsed.method),
-            CurlCommand::Header => json!(parsed.headers),
-            CurlCommand::Data => json!(parsed.data),
-            CurlCommand::Flag => json!(parsed.flags),
-            CurlCommand::Url => json!(parsed.url),
-        };
-        return Ok(value);
-    }
-
-    if !keys.is_empty() {
-        let mut map = serde_json::Map::new();
-        for key in keys {
-            match key {
-                JsonField::Url => {
-                    map.insert("url".into(), json!(parsed.url));
-                }
-                JsonField::Method => {
-                    map.insert("method".into(), json!(parsed.method));
-                }
-                JsonField::Headers => {
-                    map.insert("headers".into(), json!(parsed.headers));
-                }
-                JsonField::Data => {
-                    map.insert("data".into(), json!(parsed.data));
-                }
-                JsonField::Flags => {
-                    map.insert("flags".into(), json!(parsed.flags));
-                }
-                JsonField::Tokens => {
-                    map.insert("tokens".into(), json!(parsed.tokens));
-                }
-            }
-        }
-        return Ok(Value::Object(map));
-    }
-
-    serde_json::to_value(parsed)
-}
-
 fn print_json_error(code: &str, message: &str, pretty: bool) {
-    let payload = json!({
-        "code": code,
-        "error": message,
-    });
-
-    if pretty {
-        if let Ok(output) = serde_json::to_string_pretty(&payload) {
-            println!("{}", output);
-        }
-    } else {
-        println!("{}", payload);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_build_json_value_with_keys() {
-        let cmd = "curl 'https://example.com' -H 'A:1' --data name=value --insecure";
-        let parsed = parse_curl_command(cmd).expect("parsed");
-        let value = build_json_value(&parsed, None, &[JsonField::Url, JsonField::Headers])
-            .expect("json value");
-        assert!(value.get("url").is_some());
-        assert!(value.get("headers").is_some());
-        assert!(value.get("data").is_none());
-    }
-
-    #[test]
-    fn test_build_json_value_part_overrides_keys() {
-        let cmd = "curl 'https://example.com' --data name=value";
-        let parsed = parse_curl_command(cmd).expect("parsed");
-        let value = build_json_value(&parsed, Some(CurlCommand::Data), &[JsonField::Url])
-            .expect("json value");
-        assert!(value.is_array());
+    let payload = error_payload(code, message);
+    match format_json(&payload, pretty) {
+        Ok(text) => println!("{}", text),
+        Err(_) => println!("{{\"code\":\"{}\",\"error\":\"{}\"}}", code, message),
     }
 }

@@ -4,7 +4,7 @@ pub mod url;
 
 pub use command::{
     commands_parse, curl_cmd_parse, data_parse, datas_parse, flag_parse, flags_parse, header_parse,
-    headers_parse, method_parse, methods_parse,
+    headers_parse, method_parse, methods_parse, url_parse,
 };
 pub use common::{
     argument_value_parse, double_quoted_data_parse, is_curl, iter_quoted_data_parse,

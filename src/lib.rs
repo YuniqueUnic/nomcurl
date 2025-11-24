@@ -1,5 +1,6 @@
+pub mod cli_support;
 pub mod curl;
-mod test_util;
+pub mod test_util;
 
 pub use curl::{
     command::{Curl, CurlField, CurlToken},
