@@ -1,4 +1,4 @@
-use crate::curl::url::CurlUrl;
+use crate::curl::{config, url::CurlUrl};
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -43,48 +43,26 @@ pub enum CurlToken {
 pub use CurlToken as Curl;
 
 impl CurlToken {
-    const METHOD_FLAGS: [&'static str; 2] = ["-X", "--request"];
-    const HEADER_FLAGS: [&'static str; 2] = ["-H", "--header"];
-    const DATA_FLAGS: [&'static str; 8] = [
-        "--data-urlencode",
-        "--data-binary",
-        "--data-raw",
-        "--data",
-        "-d",
-        "--form-string",
-        "--form",
-        "-F",
-    ];
-    const FLAG_VALUE_REQUIRED: [&'static str; 7] = [
-        "--retry",
-        "--retry-delay",
-        "--retry-max-time",
-        "--connect-timeout",
-        "--max-time",
-        "--cookie",
-        "--cookie-jar",
-    ];
-
     pub fn new(identifier: &str, param: &str) -> Option<Self> {
         if param.trim().is_empty() {
             return None;
         }
 
-        if Self::METHOD_FLAGS.contains(&identifier) {
+        if config::METHOD_FLAG_IDENTIFIERS.contains(&identifier) {
             return Some(CurlToken::Method(CurlField::new_with_data(
                 "-X",
                 param.trim(),
             )));
         }
 
-        if Self::HEADER_FLAGS.contains(&identifier) {
+        if config::HEADER_FLAG_IDENTIFIERS.contains(&identifier) {
             return Some(CurlToken::Header(CurlField::new_with_data(
                 "-H",
                 param.trim(),
             )));
         }
 
-        if Self::DATA_FLAGS.contains(&identifier) {
+        if config::DATA_FLAG_IDENTIFIERS.contains(&identifier) {
             return Some(CurlToken::Data(CurlField::new_with_data("-d", param)));
         }
 
@@ -134,14 +112,15 @@ impl CurlToken {
 
     pub fn expects_value(identifier: &str) -> bool {
         let normalized = identifier.trim();
-        Self::METHOD_FLAGS.contains(&normalized)
-            || Self::HEADER_FLAGS.contains(&normalized)
-            || Self::DATA_FLAGS.contains(&normalized)
+        config::METHOD_FLAG_IDENTIFIERS.contains(&normalized)
+            || config::HEADER_FLAG_IDENTIFIERS.contains(&normalized)
+            || config::DATA_FLAG_IDENTIFIERS.contains(&normalized)
     }
 
     pub fn flag_requires_value(identifier: &str) -> bool {
         let normalized = identifier.trim();
-        Self::FLAG_VALUE_REQUIRED.contains(&normalized)
+        config::FLAG_VALUE_REQUIRED.contains(&normalized)
+            || config::SHORT_FLAGS_VALUE_REQUIRED.contains(&normalized)
     }
 }
 

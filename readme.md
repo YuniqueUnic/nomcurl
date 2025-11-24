@@ -71,6 +71,20 @@ The CLI mirrors the library parser, so every fix automatically benefits both sur
 - `curl::parser`: Nom parsers split into `common`, `command`, and `url` submodules.
 - `curl::url`: Immutable `CurlUrl`, `Protocol`, and `UserInfo` types.
 - `curl::request`: High-level `ParsedRequest` plus `parse_curl_command` and error types.
+- `curl::config`: Central registry for aliases/flags that require payloads—extend this file when adding new options.
+
+### JSON Errors
+
+When `--json` is enabled and parsing fails the CLI emits a structured payload:
+
+```json
+{
+  "code": "parse_error",
+  "error": "missing target URL"
+}
+```
+
+Successful runs can also limit the JSON body via repeated `--json-key` arguments.
 
 ## Testing
 

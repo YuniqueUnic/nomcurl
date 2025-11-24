@@ -1,4 +1,5 @@
 pub mod command;
+pub mod config;
 pub mod parser;
 pub mod request;
 pub mod url;

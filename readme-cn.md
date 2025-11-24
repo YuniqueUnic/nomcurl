@@ -62,6 +62,20 @@ cargo run -- parse "curl 'https://httpbin.org/post' --data name=value --insecure
 - `curl::parser`：公共工具、命令解析、URL 解析等子模块。
 - `curl::url`：`CurlUrl`、`Protocol`、`UserInfo` 等不可变结构体。
 - `curl::request`：`ParsedRequest`、`parse_curl_command` 以及错误类型。
+- `curl::config`：集中维护需要参数的 flag/别名，新增选项时请修改此文件。
+
+### JSON 错误格式
+
+开启 `--json` 时若解析失败，CLI 会统一返回：
+
+```json
+{
+  "code": "parse_error",
+  "error": "missing target URL"
+}
+```
+
+结合 `--json-key` 可以只输出特定字段，同时仍保留上述错误格式便于脚本处理。
 
 ## 测试
 
